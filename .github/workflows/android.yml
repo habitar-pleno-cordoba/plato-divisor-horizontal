@@ -45,11 +45,9 @@ jobs:
           EOF
           npx cap add android
           npx cap sync android
-          
           sed -i 's/minSdkVersion = 22/minSdkVersion = 24/' android/variables.gradle
 
-
-      - name: Incorporar icono
+      - name: Generar iconos Android
         run: |
           python -m pip install pillow
           python - <<'PY'
@@ -57,20 +55,68 @@ jobs:
           import os
 
           img = Image.open("icono.png").convert("RGBA")
-          sizes = {
-              "mipmap-mdpi": 48,
-              "mipmap-hdpi": 72,
-              "mipmap-xhdpi": 96,
-              "mipmap-xxhdpi": 144,
-              "mipmap-xxxhdpi": 192
-          }
           base = "android/app/src/main/res"
-          for folder, size in sizes.items():
+
+          sizes = {
+              "mdpi": 48,
+              "hdpi": 72,
+              "xhdpi": 96,
+              "xxhdpi": 144,
+              "xxxhdpi": 192
+          }
+
+          for density, size in sizes.items():
+              folder = os.path.join(base, "mipmap-" + density)
+              os.makedirs(folder, exist_ok=True)
+
+              icon = img.resize((size, size), Image.Resampling.LANCZOS)
+              icon.save(os.path.join(folder, "ic_launcher.png"))
+              icon.save(os.path.join(folder, "ic_launcher_round.png"))
+              icon.save(os.path.join(folder, "ic_launcher_foreground.png"))
+
+          # Eliminar los iconos adaptativos predeterminados
+          # para que Android utilice nuestros PNG.
+          for folder in ["mipmap-anydpi", "mipmap-anydpi-v26"]:
               path = os.path.join(base, folder)
-              os.makedirs(path, exist_ok=True)
-              resized = img.resize((size, size), Image.Resampling.LANCZOS)
-              for name in ["ic_launcher.png", "ic_launcher_round.png"]:
-                  resized.save(os.path.join(path, name))
+              for filename in ["ic_launcher.xml", "ic_launcher_round.xml"]:
+                  file = os.path.join(path, filename)
+                  if os.path.exists(file):
+                      os.remove(file)
+
+          # Reemplazar el icono de la pantalla de inicio.
+          drawable = os.path.join(base, "drawable")
+          os.makedirs(drawable, exist_ok=True)
+
+          splash = img.resize((288, 288), Image.Resampling.LANCZOS)
+          splash.save(os.path.join(drawable, "splash_icon.png"))
+
+          # Reemplazar el icono de Android 12+.
+          values = os.path.join(base, "values")
+          os.makedirs(values, exist_ok=True)
+
+          with open(os.path.join(values, "styles.xml"), "r") as f:
+              content = f.read()
+
+          content = content.replace(
+              "@drawable/splash",
+              "@drawable/splash_icon"
+          )
+
+          with open(os.path.join(values, "styles.xml"), "w") as f:
+              f.write(content)
+
+          # Ajustar el recurso de pantalla inicial si existe.
+          for folder in ["values-v31", "values"]:
+              styles = os.path.join(base, folder, "styles.xml")
+              if os.path.exists(styles):
+                  with open(styles, "r") as f:
+                      data = f.read()
+                  data = data.replace(
+                      "@drawable/splash",
+                      "@drawable/splash_icon"
+                  )
+                  with open(styles, "w") as f:
+                      f.write(data)
           PY
 
       - name: Compilar APK
