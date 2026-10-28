@@ -45,6 +45,9 @@ jobs:
           EOF
           npx cap add android
           npx cap sync android
+          
+          sed -i 's/minSdkVersion = 22/minSdkVersion = 24/' android/variables.gradle
+
 
       - name: Incorporar icono
         run: |
