@@ -105,18 +105,7 @@ jobs:
           with open(os.path.join(values, "styles.xml"), "w") as f:
               f.write(content)
 
-          # Ajustar el recurso de pantalla inicial si existe.
-          for folder in ["values-v31", "values"]:
-              styles = os.path.join(base, folder, "styles.xml")
-              if os.path.exists(styles):
-                  with open(styles, "r") as f:
-                      data = f.read()
-                  data = data.replace(
-                      "@drawable/splash",
-                      "@drawable/splash_icon"
-                  )
-                  with open(styles, "w") as f:
-                      f.write(data)
+         
           PY
 
       - name: Compilar APK
